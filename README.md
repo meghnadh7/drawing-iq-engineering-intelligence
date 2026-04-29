@@ -1,5 +1,15 @@
 # DrawingIQ
 
+## The problem
+
+Every manufacturing company deals with this: an engineer sends over a PDF drawing, and someone on the other end has to manually read through it and type the BOM into a spreadsheet, copy the part numbers into an ERP, pull out the tolerances for a QA checklist. It's the same tedious work every single time a drawing comes in.
+
+The drawings have all the data right there — part numbers, quantities, materials, dimensions, GD&T callouts, title block info — but it's locked inside a PDF that no system can read. So humans end up acting as the bridge between the drawing and whatever software actually needs that data. That's slow, it introduces typos, and it doesn't scale.
+
+DrawingIQ fixes that. You upload the PDF, the AI reads it the way an engineer would, and you get the data back in a structured format in about 15 seconds.
+
+---
+
 I built this because I got tired of manually pulling data out of engineering drawing PDFs. You upload a drawing, it reads it, and spits out the BOM, dimensions, GD&T callouts, and title block info as structured data you can actually use.
 
 It uses Gemini 2.5 Flash to process the PDF in one shot — no page-by-page nonsense — and falls back to Groq LLaMA Vision if Gemini is having a bad day. Both are free with no credit card needed.
