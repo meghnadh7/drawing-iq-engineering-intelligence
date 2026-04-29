@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Job {
+  id            String     @id @default(uuid())
+  filename      String
+  original_name String
+  file_path     String
+  page_count    Int        @default(0)
+  status        JobStatus  @default(QUEUED)
+  progress      Int        @default(0)
+  error         String?
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  extraction    Extraction?
+}
+
+model Extraction {
+  id             String   @id @default(uuid())
+  job_id         String   @unique
+  job            Job      @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  raw_result     Json
+  structured     Json
+  confidence_avg Float    @default(0)
+  reviewed       Boolean  @default(false)
+  edited_fields  Json     @default("[]")
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  EXTRACTING
+  VALIDATING
+  DONE
+  FAILED
+}
