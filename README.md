@@ -1,112 +1,69 @@
-# DrawingIQ — Engineering Document Intelligence
+# DrawingIQ
 
-DrawingIQ is a full-stack web application that transforms engineering drawing PDFs and Bills of Materials into structured, queryable data. Upload any technical PDF and the AI extracts dimensions, BOM items, GD&T callouts, and title block metadata — displayed in a side-by-side review UI with bounding-box highlighting.
+I built this because I got tired of manually pulling data out of engineering drawing PDFs. You upload a drawing, it reads it, and spits out the BOM, dimensions, GD&T callouts, and title block info as structured data you can actually use.
 
----
+It uses Gemini 2.5 Flash to process the PDF in one shot — no page-by-page nonsense — and falls back to Groq LLaMA Vision if Gemini is having a bad day. Both are free with no credit card needed.
 
-## Architecture
-
-```
-Browser (React + Vite)
-        │
-        │  HTTP / REST
-        ▼
-NestJS Backend (port 3001)
-        │
-        ├── BullMQ Queue (Redis)
-        │       │
-        │       └── Worker Process
-        │               │
-        │               ├── pdf2pic  → page rasterisation
-        │               │
-        │               ├── Gemini 1.5 Flash API  (primary)
-        │               └── Groq LLaMA 3.2 Vision (fallback)
-        │
-        ├── PostgreSQL  (job + extraction storage)
-        └── Redis       (queue + worker coordination)
-```
+![DrawingIQ](https://img.shields.io/badge/status-active-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
-## Tech Stack
+## What it does
 
-| Layer     | Technology                               |
-|-----------|------------------------------------------|
-| Frontend  | React 18, Vite, Tailwind CSS, react-pdf  |
-| Backend   | NestJS 10, BullMQ, Multer                |
-| Database  | PostgreSQL 16 + Prisma ORM               |
-| Queue     | Redis 7 + BullMQ                         |
-| AI (1)    | Google Gemini 1.5 Flash (free tier)      |
-| AI (2)    | Groq LLaMA 3.2 Vision (free fallback)    |
-| Infra     | Docker Compose                           |
+You drop in a PDF engineering drawing and it gives you back:
+
+- **BOM table** — every row, with part numbers, quantities, materials
+- **Dimensions** — all the callouts on the drawing, with tolerances
+- **GD&T callouts** — flatness, true position, perpendicularity etc.
+- **Title block** — drawing number, revision, who drew it, company
+- **Side-by-side viewer** — hover a row in the table and it highlights where that thing is on the drawing
 
 ---
 
-## Prerequisites
+## Stack
 
-- **Node.js 20+** — [nodejs.org](https://nodejs.org)
-- **Docker Desktop** — [docker.com](https://www.docker.com/products/docker-desktop)
-- **Free Gemini API key** — [aistudio.google.com](https://aistudio.google.com) (no credit card)
-- **Free Groq API key** — [console.groq.com](https://console.groq.com) (no credit card)
+- **Frontend** — React 18, Vite, Tailwind CSS
+- **Backend** — NestJS, BullMQ job queue
+- **Database** — PostgreSQL + Prisma
+- **AI** — Gemini 2.5 Flash (primary), Groq LLaMA 3.2 Vision (fallback)
+- **Infra** — Docker, Redis
 
 ---
 
-## Setup & Running
+## Getting started
 
-### 1. Clone the repo
+You'll need Node 20+, Docker Desktop, and two free API keys:
+- Gemini — [aistudio.google.com](https://aistudio.google.com)
+- Groq — [console.groq.com](https://console.groq.com)
 
 ```bash
-git clone <repo-url>
-cd drawingiq
+git clone https://github.com/meghnadh7/drawing-iq-engineering-intelligence.git
+cd drawing-iq-engineering-intelligence
 ```
 
-### 2. Configure API keys
+Copy the env file and drop your keys in:
 
 ```bash
 cp .env.example backend/.env
+# edit backend/.env and add GEMINI_API_KEY and GROQ_API_KEY
 ```
 
-Open `backend/.env` and fill in your keys:
-
-```env
-GEMINI_API_KEY=your_gemini_key_here
-GROQ_API_KEY=your_groq_key_here
-```
-
-### 3. Start Docker services (Postgres + Redis)
+Start the database and queue:
 
 ```bash
 docker compose up postgres redis -d
 ```
 
-### 4. Install ImageMagick (required for pdf2pic rasterisation)
-
-**macOS:**
-```bash
-brew install imagemagick
-```
-
-**Ubuntu / Debian:**
-```bash
-sudo apt-get install -y imagemagick ghostscript
-```
-
-**Windows:**
-Download the installer from [imagemagick.org/script/download.php](https://imagemagick.org/script/download.php)
-
-### 5. Start the backend
+Start the backend:
 
 ```bash
 cd backend
 npm install
-npx prisma generate
 npx prisma db push
 npm run start:dev
 ```
 
-Backend runs at **http://localhost:3001**
-
-### 6. Start the frontend (new terminal)
+Start the frontend in a new terminal:
 
 ```bash
 cd frontend
@@ -114,40 +71,23 @@ npm install
 npm run dev
 ```
 
-Frontend runs at **http://localhost:5173**
-
-### 7. Open the app
-
-Navigate to **http://localhost:5173** in your browser.
+Open [http://localhost:5173](http://localhost:5173) and you're good.
 
 ---
 
-## How to Use
+## How to use it
 
-1. **Upload** — Drag & drop or click to select an engineering drawing PDF (max 50 MB)
-2. **Wait** — Watch the AI extract data in real time (QUEUED → PROCESSING → EXTRACTING → DONE)
-3. **Review** — Explore the side-by-side PDF viewer and extracted data table; hover rows to highlight regions on the drawing
+1. Upload any engineering drawing PDF (drag and drop or click to browse)
+2. Wait ~15 seconds while Gemini reads it
+3. Review the extracted data on the right, with the PDF on the left
+4. Download as JSON or CSV when you're happy with it
 
----
-
-## Where to Get Free Test PDFs
-
-- **GrabCAD** — [grabcad.com/library](https://grabcad.com/library) (search "engineering drawing", filter by PDF)
-- **Google search** — `engineering drawing PDF with BOM filetype:pdf`
+For test PDFs, [GrabCAD](https://grabcad.com/library) has thousands of real engineering drawings — search for "assembly drawing" and filter by PDF.
 
 ---
 
-## Checklist
+## Notes
 
-- [ ] Docker postgres running on 5432
-- [ ] Docker redis running on 6379
-- [ ] Backend running on 3001 with no errors
-- [ ] Frontend running on 5173
-- [ ] Can upload a PDF at localhost:5173
-- [ ] Job moves QUEUED → PROCESSING → EXTRACTING → DONE
-- [ ] Gemini API call logged in backend terminal
-- [ ] Review page shows extracted data
-- [ ] Hovering a BOM row highlights region on PDF
-- [ ] JSON export downloads a file
-- [ ] CSV export downloads a file
-- [ ] Delete job removes it from the list
+- The free tier on Gemini allows 5 requests per minute, so don't hammer it with huge PDFs back to back
+- If the PDF viewer doesn't load in the browser it's a CORS thing — the extracted data still shows up fine on the right
+- Groq fallback only works for single-page rasterized images (needs ImageMagick installed)
